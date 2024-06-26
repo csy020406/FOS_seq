@@ -14,6 +14,11 @@
 # 132 coronal P56 images
 # path:         9907042031 ~ 9907042162 (1)
 # section no.:  1 ~ 527 (4) {(81,86),(522,527)}
+#
+# ReferenceSpace
+# x: anterior -> posterior
+# y: superior -> inferior
+# z: left -> right
 
 
 # for given structure id,
@@ -30,8 +35,8 @@ get_centroid_id_xy <- function(struct_id = 186) {
   api_xml <- read_xml(api_query)
   
   atlas_image_id <- xml_find_all(api_xml, "//section-image-id")
-  centroid_x <- xml_find_all(api_xml, "//x")
-  centroid_y <- xml_find_all(api_xml, "//y")
+  centroid_x <- xml_find_first(api_xml, "//x")
+  centroid_y <- xml_find_first(api_xml, "//y")
   
   # result checking
   cat("atlas_image_id:\t", xml_text(atlas_image_id))
@@ -56,15 +61,15 @@ get_xyz <- function(id, x, y) {
                      as.character(id),
                      ".xml?x=", as.character(x),
                      "&y=", as.character(y), sep = "")
-  # example api
+  # example API
   api_query <- 'http://api.brain-map.org/api/v2/image_to_reference/100960240.xml?x=5909.71681846069&y=3515.56709735465'
   
   api_xml <- read_xml(api_query)
   
   # in microns
-  ref_x <- xml_find_all(api_xml, "//x")
-  ref_y <- xml_find_all(api_xml, "//y")
-  ref_z <- xml_find_all(api_xml, "//z")
+  ref_x <- xml_find_first(api_xml, "//x")
+  ref_y <- xml_find_first(api_xml, "//y")
+  ref_z <- xml_find_first(api_xml, "//z")
   
   #result checking
   cat("ref_x:\t", xml_text(ref_x))
@@ -74,20 +79,40 @@ get_xyz <- function(id, x, y) {
 }
 
 
+
 # using Reference-to-Image synchronization,
 # generate a list of image ids of atlas
+# NOTE: x increases anterior -> posterior
 #
 # INPUT
-# id: ID of centroid image
-# n:  required list size (odds are recommended)
+# x,y,z:  (x,y,z) of centroid
+# n:  required list size / 2
 # s:  space between two images in microns
-get_image_ids <- function(id, n, s=10) {
+get_synced_atlas_images <- function(x, y, z, n, s) {
   
   library("xml2")
   
+  coronal_x <- seq(from = x + n * s, to = x - n * s, by = (-1) * s)
+  atlas_list <- c(-1,-1,-1)  # will be the last line of the list
   
-  
+  for (i in coronal_x) {
+    api_query <- paste0('http://api.brain-map.org/api/v2/reference_to_image/10.xml?x=',i,'&y=',y,'&z=',z,'&section_data_set_ids=100048576')
+    
+    api_xml <- read_xml(api_query)
+    
+    # generate a vector for an image
+    id <- xml_find_first(api_xml, "//section-image-id")
+    ix <- xml_find_first(api_xml, "//x")
+    iy <- xml_find_first(api_xml, "//y")
+    
+    v <- c(xml_text(id), xml_text(ix), xml_text(iy))
+    print(v)
+    atlas_list <- rbind(v,atlas_list)
+  }
+
 }
+
+get_synced_atlas_images(6951, 3230, 6159, 3, 100)
 
 
 # using Image-to_Image API,
