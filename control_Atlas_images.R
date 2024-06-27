@@ -21,6 +21,7 @@
 # z: left -> right
 
 
+
 # for given structure id,
 # return a vector (centroid_image_id, centroid_x, centroid_y) **not yet
 # INPUT
@@ -44,6 +45,7 @@ get_centroid_id_xy <- function(struct_id = 186) {
   cat("centroid_y:\t", xml_text(centroid_y))
   
 }
+
 
 
 # using Image-to-Reference synchronization,
@@ -81,7 +83,7 @@ get_xyz <- function(id, x, y) {
 
 
 # using Reference-to-Image synchronization,
-# generate a list of image ids of atlas
+# return a list of (id,x,y) for each atlas image
 # NOTE: x increases anterior -> posterior
 #
 # INPUT
@@ -92,8 +94,8 @@ get_synced_atlas_images <- function(x, y, z, n, s) {
   
   library("xml2")
   
-  coronal_x <- seq(from = x + n * s, to = x - n * s, by = (-1) * s)
-  atlas_list <- c(-1,-1,-1)  # will be the last line of the list
+  coronal_x <- seq(from = x - n * s, to = x + n * s, by = s)
+  atlas_list <- c(-1,-1,-1)  # first line of the list
   
   for (i in coronal_x) {
     api_query <- paste0('http://api.brain-map.org/api/v2/reference_to_image/10.xml?x=',i,'&y=',y,'&z=',z,'&section_data_set_ids=100048576')
@@ -106,42 +108,55 @@ get_synced_atlas_images <- function(x, y, z, n, s) {
     iy <- xml_find_first(api_xml, "//y")
     
     v <- c(xml_text(id), xml_text(ix), xml_text(iy))
-    print(v)
-    atlas_list <- rbind(v,atlas_list)
+    atlas_list <- rbind(atlas_list, v)
+    
   }
+  
+  # test
+  print(atlas_list)
+  
+  return(atlas_list)
 
 }
 
-get_synced_atlas_images(6951, 3230, 6159, 3, 100)
 
 
-# using Image-to_Image API,
-# make a list of size 2n+1
-# with IDs, (x,y) for each
+
+# using Image-to-Image synchronization,
+# return a list of (id,x,y) for a single gene
+# which is synced to the atlas list
 #
 # INPUT
-# id = image id
-# x,y = (x,y)
-# (from get_centroid_id_xy result)
-# 
-get_synced_image_list <- function(id, x, y) {
+# list: synced atlas images
+#       each component includes (id, x, y) in str
+#       first row is (-1,-1,-1)
+# id: gene experiment's ID
+get_synced_gene_images <- function(list, setid) {
   
   library("xml2")
   
-  # half number of images
-  # result list size would be doubled
-  n = 3
+  gene_list <- c(-1,-1,-1)
   
+  for (i in 2:nrow(list)) {
+    
+    api_query <- paste0('http://api.brain-map.org/api/v2/image_to_image/',list[i,1],".xml?x=",list[i,2],"&y=2368&section_data_set_ids=",setid)
+    
+    api_xml <- read_xml(api_query)
+    
+    # generate a vector for an image
+    id <- xml_find_first(api_xml, "//section-image-id")
+    ix <- xml_find_first(api_xml, "//x")
+    iy <- xml_find_first(api_xml, "//y")
+    
+    v <- c(xml_text(id), xml_text(ix), xml_text(iy))
+    gene_list <- rbind(gene_list, v)
+    
+  }
   
+  # test
+  print(gene_list)
   
-  api_query <- paste("http://api.brain-map.org/api/v2/image_to_image/",as.character(id),
-                     ".xml?x=",as.character(x),
-                     "&y=",as.character(y),
-                     "&section_data_set_ids=100048576", sep="")
-  
-  api_xml <- read_xml(api_query)
-  
-  api_ids <- xml_find_all(api_xml,"//id")
-  
-  xml_text(api_ids)
 }
+
+# test
+get_synced_gene_images(get_synced_atlas_images(6951, 3230, 6159, 3, 100),67810540)
