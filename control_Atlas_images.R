@@ -159,4 +159,4 @@ get_synced_gene_images <- function(list, setid) {
 }
 
 # test
-get_synced_gene_images(get_synced_atlas_images(6951, 3230, 6159, 3, 100),67810540)
+get_synced_gene_images(get_synced_atlas_images(6951, 3230, 6159, 3, 100),79912572)
